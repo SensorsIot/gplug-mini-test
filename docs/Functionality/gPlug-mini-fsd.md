@@ -2,8 +2,8 @@
 
 Requirement convention: `FR-<AREA>-NN` / `NFR-<AREA>-NN` / `C-<AREA>-NN`
 (constraint), priority **[Must] / [Should] / [May]**, provenance
-**[user] / [derived] / [pack:esp32]**. Values the user has not yet accepted carry
-**(proposed)** and are listed in §4.5. IDs are stable: obsolete items are marked
+**[user] / [derived] / [pack:esp32]**. A value the skill fills in carries **(proposed)**
+until the owner accepts it; §4.5 lists the skill-filled values and any still open. IDs are stable: obsolete items are marked
 deprecated or superseded, never renumbered.
 
 ## 1. System Overview
@@ -73,9 +73,9 @@ there is no MQTT session are decoded and discarded (§6, FR-PUB-06).
 | C-HW-03 [Must] | The meter line is received on **GPIO7** as UART RX, 3.3 V logic, non-inverted, 2400 baud, 8 data bits, even parity, 1 stop bit (8E1). | [user] |
 | C-HW-04 [Must] | The device never transmits on the meter line (receive-only interface). | [user] |
 | C-HW-05 [Must] | The console is the on-chip USB Serial/JTAG controller. | [derived] |
-| C-HW-06 [Must] | The flash layout is the partition table below. The application image must not exceed **0x1E0000 bytes (1 966 080)**; a larger image fails the build. | (proposed) |
+| C-HW-06 [Must] | The flash layout is the partition table below. The application image must not exceed **0x1E0000 bytes (1 966 080)**; a larger image fails the build. | [user] |
 
-Partition table (proposed) — bootloader at 0x0, partition table at 0x8000:
+Partition table — bootloader at 0x0, partition table at 0x8000:
 
 | Name | Type | SubType | Offset | Size |
 |---|---|---|---|---|
@@ -183,12 +183,12 @@ Decided against; a later change request is needed to add any of them.
 - BLE, Ethernet test mode, memory (heap) watchdog. [user — curated subset]
 - The 15 s, 1 min and 15 min push lists of the E450. [user]
 
-### 4.5 Proposed values awaiting acceptance
+### 4.5 Skill-filled values
 
-These were filled by the skill and are **status: proposed** until the owner
-accepts them. Everything else was stated or accepted by the user.
+These values were filled by the skill and **accepted by the owner** (status:
+approved, tagged `[user]` where they appear). None is open.
 
-| Item | Proposed value | Where |
+| Item | Value | Where |
 |---|---|---|
 | Partition table and image limit | §2.2 table, 0x1E0000 | C-HW-06 |
 | Publish latency | ≤ 1 s from the last telegram byte to the MQTT publish | FR-PUB-01 |
@@ -251,27 +251,27 @@ expired.
 
 | ID | From | Event | Guard | To | Action | Limit |
 |---|---|---|---|---|---|---|
-| FR-STM-01 [Must] [user] | BOOT | E_BOOT | no credentials | UNPROV | Start open AP `gPlug-<id>` and portal | AP beaconing ≤ 10 s (proposed) |
-| FR-STM-02 [Must] [user] | BOOT | E_BOOT | credentials stored | WIFI_CONN | Start STA with stored credentials; start T5 | first attempt ≤ 5 s (proposed) |
-| FR-STM-04 [Must] [user] | UNPROV | E_SAVE_OK | — | BOOT | Persist fields to NVS; send success page; restart | restart ≤ 5 s after response (proposed) |
+| FR-STM-01 [Must] [user] | BOOT | E_BOOT | no credentials | UNPROV | Start open AP `gPlug-<id>` and portal | AP beaconing ≤ 10 s |
+| FR-STM-02 [Must] [user] | BOOT | E_BOOT | credentials stored | WIFI_CONN | Start STA with stored credentials; start T5 | first attempt ≤ 5 s |
+| FR-STM-04 [Must] [user] | UNPROV | E_SAVE_OK | — | BOOT | Persist fields to NVS; send success page; restart | restart ≤ 5 s after response |
 | FR-STM-05 [Must] [derived] | UNPROV | E_SAVE_BAD | — | UNPROV | HTTP 400 naming the field; NVS unchanged | — |
 | FR-STM-06 [Must] [user] | WIFI_CONN | E_IP | first IP this boot | UPD_CHECK | Stop T5; confirm image if pending (FR-UPD-05); start update check | — |
 | FR-STM-07 [Must] [user] | WIFI_CONN | E_IP | not first IP this boot | MQTT_CONN | Stop T5; start MQTT client | — |
-| FR-STM-08 [Must] [user] | WIFI_CONN | E_T5 | — | FALLBACK | Start AP `gPlug-<id>` and portal alongside STA; STA retries continue; stored credentials kept | AP beaconing ≤ 10 s (proposed) |
-| FR-STM-09 [Must] [derived] | WIFI_CONN, FALLBACK | E_STA_FAIL | — | same | Retry STA; T5 keeps running | ≤ 5 s between attempts (proposed) |
-| FR-STM-10 [Must] [user] | FALLBACK | E_IP | as FR-STM-06/07 | UPD_CHECK or MQTT_CONN | Stop AP and portal; then as FR-STM-06/07 | AP gone ≤ 10 s (proposed) |
-| FR-STM-11 [Must] [user] | FALLBACK | E_SAVE_OK | — | BOOT | Persist fields; success page; restart | ≤ 5 s (proposed) |
+| FR-STM-08 [Must] [user] | WIFI_CONN | E_T5 | — | FALLBACK | Start AP `gPlug-<id>` and portal alongside STA; STA retries continue; stored credentials kept | AP beaconing ≤ 10 s |
+| FR-STM-09 [Must] [derived] | WIFI_CONN, FALLBACK | E_STA_FAIL | — | same | Retry STA; T5 keeps running | ≤ 5 s between attempts |
+| FR-STM-10 [Must] [user] | FALLBACK | E_IP | as FR-STM-06/07 | UPD_CHECK or MQTT_CONN | Stop AP and portal; then as FR-STM-06/07 | AP gone ≤ 10 s |
+| FR-STM-11 [Must] [user] | FALLBACK | E_SAVE_OK | — | BOOT | Persist fields; success page; restart | ≤ 5 s |
 | FR-STM-12 [Must] [derived] | FALLBACK | E_SAVE_BAD | — | FALLBACK | HTTP 400 naming the field; NVS unchanged | — |
 | FR-STM-13 [Must] [user] | UPD_CHECK | E_UPD_NEW | — | UPDATING | Start download into inactive slot | — |
-| FR-STM-14 [Must] [user] | UPD_CHECK | E_UPD_NONE | — | MQTT_CONN | Log result; start MQTT client; no further check this boot | check ≤ 30 s (proposed) |
+| FR-STM-14 [Must] [user] | UPD_CHECK | E_UPD_NONE | — | MQTT_CONN | Log result; start MQTT client; no further check this boot | check ≤ 30 s |
 | FR-STM-15 [Must] [derived] | UPD_CHECK | E_IP_LOST | — | WIFI_CONN | Abandon check, no retry this boot; start T5 | — |
-| FR-STM-16 [Must] [user] | UPDATING | E_IMG_OK | — | BOOT | Select new slot for next boot; restart | restart ≤ 5 s (proposed) |
+| FR-STM-16 [Must] [user] | UPDATING | E_IMG_OK | — | BOOT | Select new slot for next boot; restart | restart ≤ 5 s |
 | FR-STM-17 [Must] [derived] | UPDATING | E_IMG_FAIL | — | MQTT_CONN | Discard partial image; boot slot unchanged; start MQTT client | — |
 | FR-STM-18 [Must] [derived] | UPDATING | E_IP_LOST | — | WIFI_CONN | Discard partial image; boot slot unchanged; start T5 | — |
 | FR-STM-19 [Must] [user] | MQTT_CONN | E_MQTT_UP | — | OPERATIONAL | Publish status `online`, 11 discovery configs, meter availability (§9) | — |
-| FR-STM-20 [Must] [derived] | MQTT_CONN | E_MQTT_DOWN | — | MQTT_CONN | Retry after backoff 1, 2, 4, 8, 15, 15… s | backoff resets on E_MQTT_UP (proposed) |
+| FR-STM-20 [Must] [derived] | MQTT_CONN | E_MQTT_DOWN | — | MQTT_CONN | Retry after backoff 1, 2, 4, 8, 15, 15… s | backoff resets on E_MQTT_UP |
 | FR-STM-21 [Must] [derived] | MQTT_CONN | E_IP_LOST | — | WIFI_CONN | Stop MQTT client; start T5 | — |
-| FR-STM-22 [Must] [user] | OPERATIONAL | E_TELEGRAM | — | OPERATIONAL | Publish state message (FR-PUB-01) | ≤ 1 s (proposed) |
+| FR-STM-22 [Must] [user] | OPERATIONAL | E_TELEGRAM | — | OPERATIONAL | Publish state message (FR-PUB-01) | ≤ 1 s |
 | FR-STM-23 [Must] [derived] | OPERATIONAL | E_MQTT_DOWN | — | MQTT_CONN | Retry from 1 s | — |
 | FR-STM-24 [Must] [derived] | OPERATIONAL | E_IP_LOST | — | WIFI_CONN | Stop MQTT client; start T5 | — |
 | FR-STM-25 [Must] [pack:esp32] | any | E_WDT | — | BOOT | Hardware reset (FR-WDT-01) | — |
@@ -419,14 +419,14 @@ and tracks whether the meter is delivering.
 
 ### 6.2 Requirements
 
-- **FR-PUB-01** [Must] [user]: In `OPERATIONAL`, for each valid telegram the device shall publish one state message containing all 11 measured values, within 1 s (proposed) of the telegram's last byte.
-- **FR-PUB-02** [Must] (proposed): Each value shall be published as the unsigned integer received from the meter, in the meter's unit (W, Wh, varh, mA), without scaling or rounding.
+- **FR-PUB-01** [Must] [user]: In `OPERATIONAL`, for each valid telegram the device shall publish one state message containing all 11 measured values, within 1 s of the telegram's last byte.
+- **FR-PUB-02** [Must] [user]: Each value shall be published as the unsigned integer received from the meter, in the meter's unit (W, Wh, varh, mA), without scaling or rounding.
 - **FR-PUB-03** [Must] [user]: A telegram that fails any check in §8 shall produce no state message.
 - **FR-PUB-04** [Must] [user]: When no valid telegram has been decoded for 60 s, the device shall publish `offline` (retained) to the meter availability topic.
 - **FR-PUB-05** [Must] [user]: On the first valid telegram after the meter availability was `offline`, the device shall publish `online` (retained) to the meter availability topic before that telegram's state message.
 - **FR-PUB-06** [Must] [user]: Telegrams decoded outside `OPERATIONAL` shall never be published, including after the session is restored.
 - **FR-PUB-07** [Must] [derived]: On each `E_MQTT_UP`, the meter availability published shall be `online` if a valid telegram was decoded in the preceding 60 s, otherwise `offline`.
-- **NFR-PUB-01** [Should] (proposed): With the simulator in mode 3 and the device `OPERATIONAL` for 60 min (720 telegrams), at least 713 state messages (99 %) shall be published.
+- **NFR-PUB-01** [Should] [user]: With the simulator in mode 3 and the device `OPERATIONAL` for 60 min (720 telegrams), at least 713 state messages (99 %) shall be published.
 
 ### 6.3 Data representation when unavailable
 
@@ -498,8 +498,8 @@ confirms a new image, and remembers images that had to be rolled back.
 - **FR-UPD-04** [Must] [user]: The device shall not install a release whose version equals the stored `rejected_version`.
 - **FR-UPD-05** [Must] [user]: A newly installed image shall be confirmed as valid when it first obtains an IP.
 - **FR-UPD-06** [Must] [user]: If a newly installed image resets before it is confirmed, the next boot shall run the previous image and store the unconfirmed version as `rejected_version`.
-- **FR-UPD-07** [Must] [derived]: If the check fails (update source unreachable, HTTP status other than 200, malformed response, no matching asset, certificate failure, or no answer within 30 s (proposed)), the device shall continue with the running image and proceed to `MQTT_CONN`.
-- **FR-UPD-08** [Must] [derived]: If the download fails or stalls for 30 s (proposed), or the image fails ESP-IDF image validation, the device shall keep the current boot slot and continue with the running image.
+- **FR-UPD-07** [Must] [derived]: If the check fails (update source unreachable, HTTP status other than 200, malformed response, no matching asset, certificate failure, or no answer within 30 s), the device shall continue with the running image and proceed to `MQTT_CONN`.
+- **FR-UPD-08** [Must] [derived]: If the download fails or stalls for 30 s, or the image fails ESP-IDF image validation, the device shall keep the current boot slot and continue with the running image.
 
 ### 7.3 Verification contracts
 
@@ -589,7 +589,7 @@ encoded, unencrypted. The 13 objects are listed in Appendix A.
 - **FR-MTR-02** [Must] [user]: A telegram containing any byte received with a parity or framing error shall be rejected.
 - **FR-MTR-03** [Must] [user]: A telegram containing an HDLC frame with a wrong header check sequence (HCS) or frame check sequence (FCS) shall be rejected.
 - **FR-MTR-04** [Must] [derived]: A telegram with a missing frame, a missing or out-of-sequence GBT block, or a length shorter than its declared length shall be rejected.
-- **FR-MTR-05** [Must] (proposed): A telegram whose push-setup object list differs from the Appendix A list (count, OBIS codes or order) shall be rejected.
+- **FR-MTR-05** [Must] [user]: A telegram whose push-setup object list differs from the Appendix A list (count, OBIS codes or order) shall be rejected.
 - **FR-MTR-06** [Must] [derived]: A value whose A-XDR type is not `double-long-unsigned` shall cause the telegram to be rejected.
 - **FR-MTR-07** [Should] [derived]: Each rejected telegram shall produce one log line naming the rejection reason (`parity`, `hcs`, `fcs`, `truncated`, `sequence`, `object-list`, `type`).
 - **FR-MTR-08** [Must] [derived]: After a rejected telegram, the next valid telegram shall be decoded.
@@ -616,13 +616,13 @@ is also verified on the target tier with the simulator.
 ### 9.1 Peer
 
 An MQTT 3.1.1 broker on the LAN, consumed by Home Assistant's MQTT integration.
-Direction: device → broker only; the device subscribes to nothing. Keepalive 30 s (proposed).
+Direction: device → broker only; the device subscribes to nothing. Keepalive 30 s.
 
 ### 9.2 Topics
 
 `<id>` is defined in §18.
 
-| Topic | Payload | Retained | QoS (proposed) | When |
+| Topic | Payload | Retained | QoS | When |
 |---|---|---|---|---|
 | `homeassistant/sensor/gplug_<id>/<key>/config` | Discovery JSON (§9.3), one per key | yes | 1 | On each E_MQTT_UP |
 | `gplug/<id>/status` | `online` / `offline` (LWT) | yes | 1 | `online` on E_MQTT_UP; `offline` by broker as LWT |
@@ -684,7 +684,7 @@ Form fields: `ssid`, `password`, `mqtt_host`, `mqtt_port`, `mqtt_user`,
 
 ### 10.3 Requirements
 
-- **FR-POR-01** [Must] [user]: The setup AP shall have SSID `gPlug-<id>`, open authentication (proposed), and address 192.168.4.1 with DHCP for clients.
+- **FR-POR-01** [Must] [user]: The setup AP shall have SSID `gPlug-<id>`, open authentication, and address 192.168.4.1 with DHCP for clients.
 - **FR-POR-02** [Must] [pack:esp32]: The DNS server on the AP shall answer every A query with 192.168.4.1.
 - **FR-POR-03** [Must] [pack:esp32]: An HTTP GET for any path other than `/` shall return `302` to `http://192.168.4.1/`.
 - **FR-POR-04** [Must] [user]: `GET /` shall return a form containing the seven fields of §10.2.
@@ -712,16 +712,16 @@ Form fields: `ssid`, `password`, `mqtt_host`, `mqtt_port`, `mqtt_user`,
 Default peer: `https://api.github.com/repos/SensorsIot/gplug-mini-test/releases/latest`.
 Bench peer: a testbench HTTP server serving the same JSON subset over `http://`.
 The client reads `tag_name` (`vMAJOR.MINOR.PATCH`) and the `assets[]` entry
-whose `name` is `gplug-mini.bin` (proposed), then downloads its
+whose `name` is `gplug-mini.bin`, then downloads its
 `browser_download_url`.
 
 ### 11.2 Requirements
 
 - **FR-SRC-01** [Must] [user]: The client shall request `update_url` with HTTP GET and parse `tag_name` and `assets[].name` / `assets[].browser_download_url` from the JSON response.
-- **FR-SRC-02** [Must] (proposed): The client shall select the asset named `gplug-mini.bin`; a response without it is a check failure (FR-UPD-07).
+- **FR-SRC-02** [Must] [user]: The client shall select the asset named `gplug-mini.bin`; a response without it is a check failure (FR-UPD-07).
 - **FR-SRC-03** [Must] [user]: For `https://` URLs the client shall verify the server certificate against the ESP-IDF CA bundle; a verification failure is a check or download failure.
 - **FR-SRC-04** [Must] [user]: For `http://` URLs the client shall connect without TLS.
-- **FR-SRC-05** [Must] [derived]: The client shall follow HTTP redirects up to 5 hops (proposed); more is a failure.
+- **FR-SRC-05** [Must] [derived]: The client shall follow HTTP redirects up to 5 hops; more is a failure.
 - **FR-SRC-06** [Must] [derived]: A `tag_name` not matching `v<digits>.<digits>.<digits>` is a check failure.
 
 ### 11.3 Verification contracts
@@ -738,7 +738,7 @@ whose `name` is `gplug-mini.bin` (proposed), then downloads its
 
 ## 12. UDP Log
 
-- **FR-LOG-01** [Should] [pack:esp32]: While the STA holds an IP, each log line shall also be sent as one UDP datagram to the STA gateway's IPv4 address, port 5555 (proposed).
+- **FR-LOG-01** [Should] [pack:esp32]: While the STA holds an IP, each log line shall also be sent as one UDP datagram to the STA gateway's IPv4 address, port 5555.
 - **FR-LOG-02** [Must] [pack:esp32]: The absence of a listener on the UDP target shall not change any other observable behaviour.
 
 | ID | Precondition · stimulus | Expected observation | Must NOT happen | Tier |
@@ -782,7 +782,7 @@ ESP-IDF OTA with app rollback enabled. Two app slots of §2.2. Exercised by §7.
 `esp_http_server` (portal), `esp_http_client` with the CA certificate bundle
 (update source), UART driver (meter), FreeRTOS, task watchdog.
 
-- **FR-WDT-01** [Must] [pack:esp32]: If any application task stops running for more than 30 s (proposed), the device shall reset within 35 s of the task stopping.
+- **FR-WDT-01** [Must] [pack:esp32]: If any application task stops running for more than 30 s, the device shall reset within 35 s of the task stopping.
 - **FR-WDT-02** [Must] [pack:esp32]: The watchdog shall not reset the device during a 10-min WiFi outage, a 10-min broker outage, or an image download.
 
 ```yaml
@@ -821,7 +821,7 @@ verification:
 
 ## 19. Configuration Catalogue
 
-| Name (form field) | Type | Default | Valid range (proposed) | Persistence | Sensitivity | Change effect | Reset |
+| Name (form field) | Type | Default | Valid range | Persistence | Sensitivity | Change effect | Reset |
 |---|---|---|---|---|---|---|---|
 | `ssid` | string | none (required) | 1–32 bytes | NVS | operational | next boot | erased with NVS |
 | `password` | string | empty (open network) | empty, or 8–63 printable ASCII | NVS, plaintext | secret | next boot | erased with NVS |
@@ -890,7 +890,7 @@ testbench integration.
 
 - **C-BLD-01** [Must] [user]: Firmware is built by GitHub Actions in the container `espressif/idf:v6.0.2`; no ESP-IDF installation is required on the development machine.
 - **C-BLD-02** [Must] [derived]: The firmware version string is the git tag `vMAJOR.MINOR.PATCH` the image was built from.
-- **C-BLD-03** [Must] [user]: Each pushed tag `vX.Y.Z` produces a GitHub Release with the application image attached as `gplug-mini.bin` (proposed name).
+- **C-BLD-03** [Must] [user]: Each pushed tag `vX.Y.Z` produces a GitHub Release with the application image attached as `gplug-mini.bin`.
 - **C-BLD-04** [Must] [user]: The release repository `SensorsIot/gplug-mini-test` is publicly readable, so the device downloads releases without credentials.
 
 | ID | Precondition · stimulus | Expected observation | Must NOT happen | Tier |
@@ -983,28 +983,28 @@ Measured values are A-XDR `double-long-unsigned` (uint32). Example state message
 | Meter offline after | 60 s [user] |
 | Boot / reconnect publish deadline | 30 s [user] |
 | Setup AP address | 192.168.4.1/24 |
-| Discovery prefix | `homeassistant` (proposed) |
-| UDP log port | 5555 (proposed) |
-| Task watchdog | 30 s (proposed) |
+| Discovery prefix | `homeassistant` [user] |
+| UDP log port | 5555 [user] |
+| Task watchdog | 30 s [user] |
 
 ## Appendix C — Lifecycle metadata
 
 ```yaml
 document_status: draft
-fsd_version: 0.1.0
+fsd_version: 0.2.0
 repository: https://github.com/SensorsIot/gplug-mini-test
 baseline_commit: a6e039c
 applicable_firmware_version: none yet
 author: SensorsIot (owner), drafted with /define
 reviewers: []
-approval_status: pending owner acceptance of §4.5 proposed values
+approval_status: approved by owner
 created: 2026-10-08
 last_updated: 2026-10-08
 change_history:
   - 0.1.0 2026-10-08 initial FSD from rough idea, E450 research and owner decisions
+  - 0.2.0 2026-10-08 owner accepted all §4.5 skill-filled values
 superseded_requirements: []
 open_decisions:
-  - Acceptance of §4.5 proposed values (gates C-HW-06, FR-PUB-01/02, NFR-PUB-01, FR-MTR-05, FR-STM timing limits, FR-SRC-02/05, FR-POR-01, FR-WDT-01, FR-LOG-01, §19 ranges)
   - Repository visibility switch to public (gates C-BLD-04, FR-SRC-03 field case, AT-04)
 related_test_baseline: testing/test-plan.yaml (created by /harness)
 ```
