@@ -165,7 +165,7 @@ available from the first Phase 3 image onward.
 ### 4.3 Dependencies
 
 - ESP-IDF v6.0.2 container image `espressif/idf:v6.0.2` (C-BLD-01).
-- GitHub repository `SensorsIot/gplug-mini-test`, **publicly readable** (C-BLD-04) — it is private today.
+- GitHub repository `SensorsIot/gplug-mini-test`, **publicly readable** (C-BLD-04).
 - MBUS-Simulator (`SensorsIot/mbus-simulator`), mode 3 (E450 list) and mode 4 (byte ramp).
 - A recorded telegram set: at least one capture from the real E450 plus simulator captures, committed as host-test data before Phase 1 exits.
 - Testbench: WiFi AP, MQTT broker, HTTP file server reachable from the AP network, UDP log listener on port 5555, serial capture.
@@ -1002,10 +1002,9 @@ created: 2026-10-08
 last_updated: 2026-10-08
 change_history:
   - 0.1.0 2026-10-08 initial FSD from rough idea, E450 research and owner decisions
-  - 0.2.0 2026-10-08 owner accepted all §4.5 skill-filled values
+  - 0.2.0 2026-10-08 owner accepted all §4.5 skill-filled values; repository made public
 superseded_requirements: []
-open_decisions:
-  - Repository visibility switch to public (gates C-BLD-04, FR-SRC-03 field case, AT-04)
+open_decisions: []
 related_test_baseline: testing/test-plan.yaml (created by /harness)
 ```
 
