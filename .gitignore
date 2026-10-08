@@ -1,0 +1,17 @@
+.claude-data/
+tmp/
+build/
+sdkconfig
+sdkconfig.old
+managed_components/
+__pycache__/
+
+# Assistant configuration, not a repo artefact.
+CLAUDE.md
+build/host/
+.pytest_cache/
+fw/
+
+# Project skills come from the Embedded-AI-Harness bind mount
+# (/home/dev/.harness-skills). The link is host-specific -- do not commit it.
+.claude/skills
