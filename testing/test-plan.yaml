@@ -60,11 +60,11 @@ capabilities:
   tcp-port-scan:
     what: Scan all TCP ports of a DUT on the AP network
     available: "no"    # no scanner declared by the bench — FR-SEC-02 stays blocked until one exists
-    change_request: to be filed on the testbench repository (owner's decision); never worked around in this project
+    change_request: https://github.com/SensorsIot/Embedded-AI-Harness/issues/41 (filed 2026-10-09); never worked around in this project
   https-untrusted-server:
     what: An HTTPS server with a self-signed certificate on the AP network
     available: "no"    # not declared by the bench — FR-SRC-03 negative case blocked
-    change_request: to be filed on the testbench repository (owner's decision); never worked around in this project
+    change_request: https://github.com/SensorsIot/Embedded-AI-Harness/issues/41 (filed 2026-10-09); never worked around in this project
 
   # --- Project-side: unproven until observed working here. ---
   release-verification:
@@ -103,9 +103,15 @@ capabilities:
 
 gates:
   - gate: Load defined
-    verdict: null      # recorded by the fresh checker: OPEN/SHUT, date, commit
+    verdict: OPEN
+    date: 2026-10-09
+    commit: e2ae02b
+    by: fresh checker (third round; rounds 1-2 SHUT, findings fixed in 98daac7, e2ae02b)
   - gate: AI harnessed
-    verdict: null
+    verdict: OPEN
+    date: 2026-10-09
+    commit: e2ae02b
+    by: fresh checker (third round; rounds 1-2 SHUT, findings fixed in 98daac7, e2ae02b)
 
 tests:
   # --- Journey: the standard run, one test per step, in order (wave 1). ---
