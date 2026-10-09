@@ -111,11 +111,14 @@ jobs:
 
       # An unreachable bench is an unmet precondition: the journey is
       # "not done", the job fails, and nothing is released.
+      # The discovery beacon does not cross into this container, so the
+      # address declared in the plan (testbench.url) is the fallback.
       - name: Point at the testbench
         run: |
           ARGS="--url"; [ -n "$TESTBENCH_NAME" ] && ARGS="$ARGS --name $TESTBENCH_NAME"
-          URL=$(python3 /home/dev/.harness-skills/esp-idf-handling/discover-testbench.py $ARGS) \
-            || { echo "not done: no testbench answered discovery"; exit 1; }
+          URL=$(python3 /home/dev/.harness-skills/esp-idf-handling/discover-testbench.py $ARGS 2>/dev/null) \
+            || URL=$(sed -n 's/^  url: \(http[^ ]*\).*/\1/p' testing/test-plan.yaml)
+          [ -n "$URL" ] || { echo "not done: no testbench address"; exit 1; }
           echo "TESTBENCH_URL=$URL" >> $GITHUB_ENV
           curl -sf "$URL/api/info" >/dev/null \
             || { echo "not done: testbench $URL does not answer /api/info"; exit 1; }

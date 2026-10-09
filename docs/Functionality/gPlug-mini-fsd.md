@@ -134,14 +134,24 @@ Source-layout rules that make the code mirror these layers are HOW and live in
 
 | Phase | Scope | Deliverables | Exit criteria | Depends on |
 |---|---|---|---|---|
-| **1 — Foundation and meter decoding** | CI build, partition table, UART reception, telegram decoder | GitHub Actions build on `espressif/idf:v6.0.2`; firmware that boots on the gPlug-mini and logs decoded values to serial; host decoder tests with recorded telegrams | Host tier: FR-MTR-01..08 pass on the recorded telegram set. Target tier: decoded values from the MBUS-Simulator (mode 3) appear on the serial log and match the simulator's values. C-HW-06 image size holds. | Commissioned MBUS-Simulator wiring (journey Phase 2); recorded telegram set (§4.3) |
-| **2 — Connectivity and Home Assistant** | Setup portal, WiFi STA, fallback portal, NVS configuration, MQTT session, HA Discovery, availability, publishing, UDP log, watchdog | Firmware that provisions through the portal and publishes to the bench broker | Bench tier: §5 transition rows FR-STM-01..12 and 19..25, §6, §9, §10, §12, §17, §18, §19, §21 requirements pass. NFR-STM-01..03 pass. | Phase 1 decoder; testbench WiFi AP and MQTT broker |
-| **3 — Self-update** | Update check at boot, download, rollback, release publishing | CI release job attaching `gplug-mini.bin` to each `vX.Y.Z` tag; firmware with the update policy | Bench tier: §7, §11 and rows FR-STM-13..18 pass against the testbench update server, including forced rollback. Field tier: AT-04 passes against the public GitHub repository. | Phase 2 (WiFi, portal field `update_url`); repository public (C-BLD-04) |
+| **1 — Foundation and meter decoding** | CI build, partition table, UART reception, telegram decoder | GitHub Actions build on `espressif/idf:v6.0.2`; firmware that boots on the gPlug-mini and logs decoded values to serial; host decoder tests with recorded telegrams | Requirements below pass at their contract tiers | Commissioned DUT and MBUS-Simulator wiring (journey Phase 2, `/commission`); recorded telegram set (§4.3) |
+| **2 — Connectivity, Home Assistant, update check** | Setup portal, WiFi STA, fallback portal, NVS configuration, update check at boot (check only), MQTT session, HA Discovery, availability, publishing, UDP log, watchdog, security | Firmware that provisions through the portal, checks the update source once per boot, and publishes to the bench broker | Requirements below pass; field acceptance AT-01..03 | Phase 1 image and decoder; testbench WiFi AP, broker and file hosting |
+| **3 — Self-update** | Download, install, confirm, rollback, release publishing | CI release job attaching `gplug-mini.bin` to each `vX.Y.Z` tag; firmware that installs newer releases | Requirements below pass, including forced rollback; field acceptance AT-04 against the public repository | Phase 2 update check and portal field `update_url`; repository public |
 
-Each phase is enterable from the previous one: Phase 2 needs only the Phase 1
-decoder; Phase 3 needs the Phase 2 network path and the `update_url` field the
-Phase 2 portal already provides. The first firmware is flashed over USB; OTA is
-available from the first Phase 3 image onward.
+Requirements each phase must pass (every FSD id appears once; a requirement
+split across phases names the cases):
+
+- **Phase 1:** C-HW-01, C-HW-02, C-HW-03, C-HW-05, C-HW-06 · C-BLD-01, C-BLD-02 · FR-MTR-01..08 · FR-OBS-01 · FR-OBS-02 for `Init complete` and `alive`.
+- **Phase 2:** C-HW-04 · FR-STM-01, 02, 04..12, 14, 15, 19..25 · NFR-STM-01..03 · FR-PUB-01..07, NFR-PUB-01 · FR-UPD-01, FR-UPD-03, FR-UPD-07 · FR-SRC-01..06 · FR-HA-01..08 · FR-POR-01..07 · FR-LOG-01, 02 · FR-NVS-01 (power-cycle cases), FR-NVS-02 · FR-WDT-01, FR-WDT-02 (outage cases) · FR-ID-01 (without OTA) · FR-CFG-01 · FR-SEC-01, 02 · FR-OBS-02 for the WiFi, portal and UDP markers.
+- **Phase 3:** FR-STM-13, 16, 17, 18 · FR-UPD-02, 04, 05, 06, 08 · C-BLD-03, C-BLD-04 · FR-NVS-01 (after OTA) · FR-WDT-02 (during download) · FR-ID-01 (after OTA) · FR-OBS-02 for `OTA succeeded` and `OTA failed`.
+
+Each phase is enterable from the previous one. Phase 2 rests on the Phase 1
+image; its update check (UPD_CHECK → MQTT_CONN via FR-STM-14) needs no
+download, and during Phase 2 the bench release always equals the running
+version, so E_UPD_NEW (FR-STM-13) does not occur before Phase 3 implements it.
+Phase 3 rests on the Phase 2 check and the `update_url` field. The first
+firmware is flashed over USB; OTA installs are available from the first
+Phase 3 image onward.
 
 ## 4. Risks, Assumptions & Dependencies
 
@@ -167,7 +177,7 @@ available from the first Phase 3 image onward.
 - ESP-IDF v6.0.2 container image `espressif/idf:v6.0.2` (C-BLD-01).
 - GitHub repository `SensorsIot/gplug-mini-test`, **publicly readable** (C-BLD-04).
 - MBUS-Simulator (`SensorsIot/mbus-simulator`), mode 3 (E450 list) and mode 4 (byte ramp).
-- A recorded telegram set: at least one capture from the real E450 plus simulator captures, committed as host-test data before Phase 1 exits.
+- A recorded telegram set, committed as host-test data before Phase 1 exits: simulator captures taken on the bench, and at least one capture from the real E450, recorded by the owner at the meter.
 - Testbench: WiFi AP, MQTT broker, HTTP file server reachable from the AP network, UDP log listener on port 5555, serial capture.
 
 ### 4.4 Explicitly out of scope
@@ -409,7 +419,7 @@ Compact contracts:
 | FR-STM-22 | OPERATIONAL · simulator mode 3 | One state message per telegram | Missing or duplicate messages | bench |
 | FR-STM-23 | OPERATIONAL · kill broker connection | Reconnect attempt ≤ 1 s | Restart | bench |
 | FR-STM-24 | OPERATIONAL · drop AP | WIFI_CONN, T5 starts | Restart | bench |
-| FR-STM-25 | see FR-WDT-01 | — | — | target |
+| FR-STM-25 | OPERATIONAL, hang-injection build · block a task (contract FR-WDT-01) | Reset 30–35 s after the block; boot log shows the task-watchdog reason | No reset; reset before 30 s; configuration lost | target |
 | NFR-STM-03 | Provisioned, all peers up · reset | First state message ≤ 30 s after reset | Restart in between | bench |
 
 ## 6. Meter Value Publishing
@@ -1011,19 +1021,20 @@ Measured values are A-XDR `double-long-unsigned` (uint32). Example state message
 
 ```yaml
 document_status: draft
-fsd_version: 0.3.0
+fsd_version: 0.3.1
 repository: https://github.com/SensorsIot/gplug-mini-test
 baseline_commit: a6e039c
 applicable_firmware_version: none yet
 author: SensorsIot (owner), drafted with /define
 reviewers: []
-approval_status: approved by owner
+approval_status: approved by owner, except open_decisions
 created: 2026-10-08
-last_updated: 2026-10-08
+last_updated: 2026-10-09
 change_history:
   - 0.1.0 2026-10-08 initial FSD from rough idea, E450 research and owner decisions
   - 0.2.0 2026-10-08 owner accepted all §4.5 skill-filled values; repository made public
   - 0.3.0 2026-10-09 FR-OBS-02 testbench log markers (from /harness testbench integration)
+  - 0.3.1 2026-10-09 §3: update check moved to Phase 2, every id assigned to a phase; FR-STM-25 contract row filled
 superseded_requirements: []
 open_decisions:
   - Heartbeat interval 10 s (gates FR-OBS-02)

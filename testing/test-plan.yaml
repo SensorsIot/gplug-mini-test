@@ -57,10 +57,6 @@ capabilities:
   firmware-hosting:
     what: Files uploaded to the bench served over plain HTTP to the AP network (/api/firmware/upload)
     available: "yes"
-  release-verification:
-    what: tag-triggered journey run against the released artifact
-    available: "yes"   # the container runs 24/7; the bench may not — an absent
-                     # bench at verify time is an unmet precondition (not done)
   tcp-port-scan:
     what: Scan all TCP ports of a DUT on the AP network
     available: "no"    # no scanner declared by the bench — FR-SEC-02 stays blocked until one exists
@@ -68,7 +64,13 @@ capabilities:
     what: An HTTPS server with a self-signed certificate on the AP network
     available: "no"    # not declared by the bench — FR-SRC-03 negative case blocked
 
-  # --- Project-side: unproven until /commission observes them here. ---
+  # --- Project-side: unproven until observed working here. ---
+  release-verification:
+    what: Tag-triggered `verify` job on the devcontainer runner runs the journey on the released artifact
+    available: "unproven"  # never run: no tag exists yet. An absent bench at verify
+                           # time is an unmet precondition (not done), not a failure.
+    runner_registration: granted by the owner on 2026-10-09; runner gplug-mini-test-devcontainer, labels self-hosted+testbench
+
   # Each entry is an item on testing/debugging-agenda.md.
   dut-board:
     what: The gPlug-mini accepts a CI image at its flash_args offsets and boots it
@@ -79,6 +81,7 @@ capabilities:
   mbus-simulator:
     what: MBUS-Simulator (SensorsIot/mbus-simulator) mode 3 emits complete E450 CI1 telegrams every 5 s
     available: "unproven"
+    open: how the simulator is powered from and its mode selected by the bench — recorded here when commissioned
   simulator-wiring:
     what: Simulator GPIO17 -> DUT GPIO7, common ground, non-inverted; mode 4 byte ramp arrives intact
     available: "unproven"
@@ -217,8 +220,9 @@ tests:
     expect: ctest reports tier_runs passed
     must_not: Built against ESP-IDF
     impl: tests/host/test_tier.c:tier_runs
-    status: not done
-    reason: precondition unmet — CI has not run yet
+    status: successful
+    commit: edbce47
+    evidence: GitHub Actions run 37908852478, job host tests (ctest tier_runs passed)
 
   # --- Later waves: declared now because they need a capability or seam. ---
   - id: TC-WDT-01

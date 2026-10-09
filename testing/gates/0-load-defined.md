@@ -12,7 +12,7 @@ Read `_common.md` first.
 | 4 | Every `(proposed)` value is listed in §4.5 and in `open_decisions` (Appendix C) | FSD §4.5, Appendix C | Each proposed value appears in both |
 | 5 | State model §5 has a transition table and a completeness table covering all 7 states | FSD §5.4, §5.5 | Quote both tables' state columns |
 | 6 | Security profile §21.1 precedes the security requirements §21.3 | FSD §21 | Heading order |
-| 7 | Every phase in §3 is enterable from the previous one | FSD §3 | J2 |
+| 7 | Every phase in §3 is enterable from the previous one, and every requirement id is assigned to exactly one phase (split cases named) | FSD §3 "Requirements each phase must pass" | J2 |
 | 8 | Three planes exist and are committed | `docs/00-Overview.md`, `docs/Method/`, `docs/UserDocumentation/User-Manual.md` | M3 |
 
 ## Mechanical checks
@@ -39,6 +39,6 @@ git ls-files docs/00-Overview.md docs/Method docs/UserDocumentation docs/Functio
 
 ## Traps
 
-- The 93-requirement count looks complete while a later `/define update` adds an id without a contract — M1 catches it, never skip M1.
+- A complete-looking requirement count while a later `/define update` adds an id without a contract — M1 catches it, never skip M1.
 - A `(proposed)` value silently treated as approved because it sits in a table nobody re-reads (heartbeat interval in FR-OBS-02 was added this way).
 - `Load defined` requires no `(assumed)` marker on anything architecture-critical: check §4.2 — only power budget, HA device class and DHCP are allowed there.
