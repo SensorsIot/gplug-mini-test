@@ -36,5 +36,8 @@ while true; do
 done >> $RUNNER_DIR/loop.log 2>&1
 LOOP
 chmod +x loop.sh
-pgrep -f 'actions-runner/loop[.]sh' >/dev/null || nohup bash loop.sh >/dev/null 2>&1 &
+# Detached from this shell, so the script returns once the loop is started.
+if ! pgrep -f 'actions-runner/loop[.]sh' >/dev/null; then
+    setsid nohup bash loop.sh >/dev/null 2>&1 </dev/null &
+fi
 echo "runner loop started for $NAME on $REPO (labels: self-hosted, testbench)"
