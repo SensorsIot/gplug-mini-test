@@ -9,5 +9,5 @@ static const char *TAG = "main";
 void app_main(void)
 {
     udp_log_init();
-    ESP_LOGI(TAG, "Init complete");
+    ESP_LOGI(TAG, "Init complete")   /* DEMO: missing semicolon */
 }
