@@ -15,7 +15,9 @@ dut:
   chip: esp32c3            # FSD C-HW-01
   flash: 4MB               # FSD C-HW-02
   console: usb-serial-jtag # FSD C-HW-05 — open with DTR and RTS low
-  slot: null               # resolved by /commission, never guessed
+  slot: SLOT1              # /commission 2026-10-09: the only populated slot
+  mac: "b0:81:84:25:4a:74" # the unit this project is verified against (FR-ID-01 id 254a74)
+  revision: v0.4           # esptool via /api/chip/info, 2026-10-09: ESP32-C3 (QFN32), embedded 4MB XMC flash
 
 testbench:
   hostname: testbench-b1c2
@@ -125,9 +127,14 @@ tests:
     needs: [dut-board, serial-flash, serial-monitor, dut-console]
     expect: 'Serial shows `Init complete` after flashing the coldflash set at its flash_args offsets'
     must_not: Previous firmware boots (wrong offset); no output (console not proven)
-    impl: ""
-    status: not done
-    reason: test not written
+    impl: tests/bench/test_journey.py:test_jrn_01
+    status: failed
+    commit: 1703d36
+    evidence: >
+      CI run 37954125149 bytes at flash_args offsets; app 0.0.0-1703d36 loaded from 0x20000,
+      then `assert failed: tcpip_send_msg_wait_sem ... (Invalid mbox)` from app_main, ~6
+      restarts/s, no `Init complete`. Cause: udp_log sender task called socket() before the
+      TCP/IP stack existed. 2026-10-09
 
   - id: JRN-02
     title: Fresh boot without configuration opens the setup AP

@@ -35,3 +35,23 @@ def testbench():
     except ImportError:
         pytest.skip(f"not done: TestbenchDriver not found under {DRIVER_PATH}")
     return TestbenchDriver(url)
+
+
+PLAN = os.path.join(os.path.dirname(__file__), "..", "..", "testing", "test-plan.yaml")
+
+
+@pytest.fixture(scope="session")
+def dut_slot(testbench):
+    """The slot holding the unit the plan records, confirmed by its MAC.
+
+    Every native-USB ESP32 enumerates as 303a:1001, so the slot label alone
+    does not say which board answered; the MAC does."""
+    import yaml
+    with open(PLAN) as fh:
+        dut = yaml.safe_load(fh)["dut"]
+    if not dut.get("slot") or not dut.get("mac"):
+        pytest.skip("not done: DUT not commissioned (dut.slot/dut.mac empty)")
+    info = testbench.chip_info(dut["slot"])
+    if info.get("mac", "").lower() != dut["mac"].lower():
+        pytest.fail(f"wrong board in {dut['slot']}: MAC {info.get('mac')}, plan expects {dut['mac']}")
+    return dut["slot"]

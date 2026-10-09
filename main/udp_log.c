@@ -42,14 +42,23 @@ static int udp_log_vprintf(const char *fmt, va_list args)
     return ret;
 }
 
+/* The socket is opened on the first line, not at task start: lines are only
+ * queued once a target is set, which needs an IP, so the TCP/IP stack is up by
+ * then. A socket() before esp_netif_init() asserts in lwIP (Invalid mbox). */
 static void udp_sender_task(void *arg)
 {
-    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+    int sock = -1;
     char line[MAX_LINE];
     for (;;) {
         size_t len = xMessageBufferReceive(s_buf, line, sizeof(line), portMAX_DELAY);
-        if (len == 0 || sock < 0 || s_ip == 0) {
+        if (len == 0 || s_ip == 0) {
             continue;
+        }
+        if (sock < 0) {
+            sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+            if (sock < 0) {
+                continue;
+            }
         }
         struct sockaddr_in dest = {
             .sin_family = AF_INET,
