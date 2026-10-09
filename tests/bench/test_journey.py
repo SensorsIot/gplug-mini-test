@@ -38,10 +38,14 @@ def test_jrn_01(testbench, dut_slot, firmware_dir):
     assert result.get("ok"), f"flash failed: {result.get('error') or result.get('output', '')[-500:]}"
     assert "ESP32-C3" in result.get("output", "")          # C-HW-01
 
-    mon = testbench.serial_monitor(dut_slot, pattern="Init complete", timeout=20)
-    out = mon.get("output", [])
+    # The marker prints once, before a monitor opened after the flash could see
+    # it (the native-USB port re-enumerates on the flash's own reset). The
+    # bench's reset returns the boot log it caused, so read the boot from there.
+    out = testbench.serial_reset(dut_slot).get("output", [])
+    if isinstance(out, str):
+        pytest.fail("reset went over JTAG (debug session attached), no boot log: " + out[:200])
     text = "\n".join(out)
-    assert mon.get("matched"), f"no `Init complete` in {len(out)} lines:\n" + "\n".join(out[-40:])
+    assert "Init complete" in text, f"no `Init complete` in {len(out)} lines:\n" + "\n".join(out[-40:])
 
     # must_not: a previous firmware boots (wrong offset) or the app crash-loops.
     assert f"App version:      {version}" in text, "booted image is not the one flashed"

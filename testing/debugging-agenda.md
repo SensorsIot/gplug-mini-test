@@ -8,8 +8,8 @@ not on this list — the project depends on its declared capabilities.
 
 | Part | Capability | Unproven because | Proven by |
 |---|---|---|---|
-| gPlug-mini board | `dut-board` | Never flashed in this project | The CI coldflash set, flashed at the offsets in its `flash_args`, boots and prints `Init complete` |
-| USB console (ESP32-C3 native USB) | `dut-console` | Native USB halts or resets the chip when DTR/RTS are asserted on open | Boot log read with DTR and RTS held low, without the chip stopping |
+| ~~gPlug-mini board~~ ✔ 2026-10-09, see `dut-board` | `dut-board` | Never flashed in this project | The CI coldflash set, flashed at the offsets in its `flash_args`, boots and prints `Init complete` |
+| ~~USB console (ESP32-C3 native USB)~~ ✔ 2026-10-09, see `dut-console` | `dut-console` | Native USB halts or resets the chip when DTR/RTS are asserted on open | Boot log read with DTR and RTS held low, without the chip stopping |
 | MBUS-Simulator | `mbus-simulator` | New to this project; how the bench powers it and selects its mode is unknown | Mode 3 emits complete telegrams every 5 s (whole HDLC frames, ~381 bytes); power and mode selection recorded on the capability |
 | Simulator → DUT wire | `simulator-wiring` | GPIO17 → GPIO7, common ground and polarity unconfirmed | Mode 4 counted byte ramp arrives at the DUT intact, no parity errors |
 | Release-verify job | `release-verification` | Never run: no tag exists yet | A test tag's `verify` job finds the bench and reaches the journey step |

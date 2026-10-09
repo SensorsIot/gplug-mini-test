@@ -78,10 +78,22 @@ capabilities:
   # Each entry is an item on testing/debugging-agenda.md.
   dut-board:
     what: The gPlug-mini accepts a CI image at its flash_args offsets and boots it
-    available: "unproven"
+    available: "yes"
+    observed: >
+      2026-10-09, SLOT1: ESP32-C3 (QFN32) rev v0.4, 4MB XMC flash, MAC b0:81:84:25:4a:74.
+      CI run 37955690047 flashed at flash_args offsets, booted from 0x20000, `Init complete` (JRN-01).
   dut-console:
     what: The DUT's USB Serial/JTAG boot log is readable without halting or resetting it
-    available: "unproven"
+    available: "yes"
+    observed: >
+      2026-10-09: opening /api/serial/monitor on a running board read `W (311453) ...`
+      (5 min uptime) and produced no ROM banner, so the open asserts neither DTR nor RTS;
+      a later 5 s open on the silent a35145b build also printed no banner (a reset
+      would have). Boot logs read in full after flash and after /api/serial/reset.
+    consequence: >
+      The app's one-shot `Init complete` has already scrolled past a monitor opened
+      after /api/flash (USB re-enumerates); JRN-01 reads the boot from the bench reset.
+      Later steps should match a periodic marker (`alive`, FR-OBS-02) instead.
   mbus-simulator:
     what: MBUS-Simulator (SensorsIot/mbus-simulator) mode 3 emits complete E450 CI1 telegrams every 5 s
     available: "unproven"
@@ -128,13 +140,17 @@ tests:
     expect: 'Serial shows `Init complete` after flashing the coldflash set at its flash_args offsets'
     must_not: Previous firmware boots (wrong offset); no output (console not proven)
     impl: tests/bench/test_journey.py:test_jrn_01
-    status: failed
-    commit: 1703d36
+    status: successful
+    commit: a35145b
     evidence: >
-      CI run 37954125149 bytes at flash_args offsets; app 0.0.0-1703d36 loaded from 0x20000,
-      then `assert failed: tcpip_send_msg_wait_sem ... (Invalid mbox)` from app_main, ~6
-      restarts/s, no `Init complete`. Cause: udp_log sender task called socket() before the
-      TCP/IP stack existed. 2026-10-09
+      CI run 37955690047 (0.0.0-a35145b), coldflash set at its flash_args offsets
+      (0x0, 0x8000, 0xf000, 0x20000) to SLOT1, MAC b0:81:84:25:4a:74; boot log via
+      the bench reset: `Loaded app from partition at offset 0x20000`, `App version:
+      0.0.0-a35145b`, `SPI Flash Size : 4MB`, `main: Init complete`, one boot, no
+      assert. Same test against CI run 37954125149 (1703d36) fails: crash loop.
+      2026-10-09
+    history:
+      - {status: failed, commit: 1703d36, date: 2026-10-09, why: "udp_log socket() before TCP/IP stack -> lwIP assert, crash loop"}
 
   - id: JRN-02
     title: Fresh boot without configuration opens the setup AP
