@@ -185,8 +185,9 @@ Decided against; a later change request is needed to add any of them.
 
 ### 4.5 Skill-filled values
 
-These values were filled by the skill and **accepted by the owner** (status:
-approved, tagged `[user]` where they appear). None is open.
+These values were filled by the skill. All are **accepted by the owner**
+(status: approved, tagged `[user]` where they appear) except rows marked
+**open**, which stay `(proposed)` until accepted.
 
 | Item | Value | Where |
 |---|---|---|
@@ -207,6 +208,7 @@ approved, tagged `[user]` where they appear). None is open.
 | QoS / discovery prefix | Discovery and status QoS 1, state QoS 0; prefix `homeassistant` | §9 |
 | UDP log target | STA gateway IPv4, port 5555 | FR-LOG-01 |
 | Portal field limits | §19 valid ranges | §19 |
+| Heartbeat interval — **open** | `alive` marker every 10 s | FR-OBS-02 |
 
 # Part A — Application Logic (L2)
 
@@ -850,8 +852,26 @@ takes effect at the next boot.
 |---|---|---|---|---|
 | FR-OBS-01 | Power-on; software restart; watchdog reset | Line with version and the matching reset reason | Missing line | target |
 
-The fixed log markers the testbench detects are added by `/harness` with the
-testbench integration.
+- **FR-OBS-02** [Must] [derived]: The device shall emit each testbench marker below, with the exact text, on the serial console and (while it holds an IP) the UDP log, at the event named.
+
+| Marker (printf format) | Emitted when |
+|---|---|
+| `Init complete` | Startup finished (last line of startup) |
+| `alive %lu` | Every 10 s (proposed), with seconds since boot |
+| `UDP logging -> %s:%d` | UDP log target set (FR-LOG-01) |
+| `No WiFi credentials` | Boot into `UNPROV` (FR-STM-01) |
+| `AP mode: SSID='%s'` | Setup AP started (FR-STM-01, FR-STM-08) |
+| `Portal page requested` | `GET /` served (FR-POR-04) |
+| `Credentials saved` | `POST /save` accepted (FR-POR-06) |
+| `STA mode, connecting to '%s'` | STA start (FR-STM-02) |
+| `STA got IP` | E_IP |
+| `STA disconnect, retry` | E_STA_FAIL |
+| `OTA succeeded` | E_IMG_OK, before the restart (FR-STM-16) |
+| `OTA failed` | E_IMG_FAIL (FR-STM-17, FR-STM-18) |
+
+| ID | Precondition · stimulus | Expected observation | Must NOT happen | Tier |
+|---|---|---|---|---|
+| FR-OBS-02 | Each event of the table provoked by its own requirement's test | Marker line present, exact text | Paraphrased or missing marker | target, bench |
 
 ## 21. Security
 
@@ -991,7 +1011,7 @@ Measured values are A-XDR `double-long-unsigned` (uint32). Example state message
 
 ```yaml
 document_status: draft
-fsd_version: 0.2.0
+fsd_version: 0.3.0
 repository: https://github.com/SensorsIot/gplug-mini-test
 baseline_commit: a6e039c
 applicable_firmware_version: none yet
@@ -1003,8 +1023,10 @@ last_updated: 2026-10-08
 change_history:
   - 0.1.0 2026-10-08 initial FSD from rough idea, E450 research and owner decisions
   - 0.2.0 2026-10-08 owner accepted all §4.5 skill-filled values; repository made public
+  - 0.3.0 2026-10-09 FR-OBS-02 testbench log markers (from /harness testbench integration)
 superseded_requirements: []
-open_decisions: []
+open_decisions:
+  - Heartbeat interval 10 s (gates FR-OBS-02)
 related_test_baseline: testing/test-plan.yaml (created by /harness)
 ```
 
