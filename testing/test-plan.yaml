@@ -58,13 +58,13 @@ capabilities:
     what: Files uploaded to the bench served over plain HTTP to the AP network (/api/firmware/upload)
     available: "yes"
   tcp-port-scan:
-    what: Scan all TCP ports of a DUT on the AP network
-    available: "no"    # no scanner declared by the bench — FR-SEC-02 stays blocked until one exists
-    change_request: https://github.com/SensorsIot/Embedded-AI-Harness/issues/41 (filed 2026-10-09); never worked around in this project
+    what: TCP connect check of one AP-network host, all ports (POST /api/net/portscan, testbench FR-039)
+    available: "yes"   # declared by the bench since Embedded-AI-Harness#42 (deployed 2026-10-09)
+    limitation: Target must be in 192.168.4.0/24 and not the Pi; default budget 120 s — check `complete`
   https-untrusted-server:
-    what: An HTTPS server with a self-signed certificate on the AP network
-    available: "no"    # not declared by the bench — FR-SRC-03 negative case blocked
-    change_request: https://github.com/SensorsIot/Embedded-AI-Harness/issues/41 (filed 2026-10-09); never worked around in this project
+    what: Firmware repository over HTTPS on 8443 with a self-signed certificate (/api/tls-mirror/*, testbench FR-038)
+    available: "yes"   # declared by the bench since Embedded-AI-Harness#42 (deployed 2026-10-09)
+    limitation: On demand — start it in the test, stop it after; bench reset stops it. `sha256` names the certificate shown
 
   # --- Project-side: unproven until observed working here. ---
   release-verification:
@@ -259,7 +259,7 @@ tests:
     must_not: Any open port
     impl: ""
     status: not done
-    reason: needs tcp-port-scan
+    reason: test not written
 
   - id: TC-SRC-03
     title: Update source with an untrusted certificate is refused
@@ -273,4 +273,4 @@ tests:
     must_not: Download proceeds
     impl: ""
     status: not done
-    reason: needs https-untrusted-server
+    reason: test not written
