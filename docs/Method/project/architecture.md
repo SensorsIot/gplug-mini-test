@@ -63,3 +63,27 @@ ESP-IDF include and builds on the host:
   speculative entry breaks configuration with a misleading error.
 - The version comes from the git tag (`git describe --tags`); CI attaches the
   image to the release as `gplug-mini.bin`.
+
+## Test tiers
+
+| Tier | Lives in | Runs |
+|---|---|---|
+| host | `tests/host/` (CMake + ctest, one executable per component) | CI job `host`, before every firmware build; locally `cmake -S tests/host -B build/host -G Ninja && cmake --build build/host && ctest --test-dir build/host` |
+| target, bench | `tests/target/`, `tests/bench/` (pytest) | From the devcontainer against the testbench; `pytest -m journey` runs the journey |
+
+- Bench tests take the `testbench` fixture from `tests/bench/conftest.py`. It
+  needs `TESTBENCH_URL` and the TestbenchDriver, mounted read-only at
+  `/home/dev/testbench-pytest` by `.devcontainer/devcontainer.json`.
+- Journey tests carry `@pytest.mark.journey` and are named `test_jrn_NN`.
+- Every test is declared in `testing/test-plan.yaml` before it is written; its
+  `impl:` points at the executable.
+- In the plan, `available` values are quoted (`"yes"`): a bare `yes` is a YAML
+  boolean.
+
+## Release verification
+
+On a version tag, job `verify` in `.github/workflows/build.yml` runs on the
+self-hosted runner in this devcontainer (labels `self-hosted, testbench`),
+downloads that run's artefact, and runs the journey against it; `release`
+needs `verify`. The runner is registered by `scripts/runner-setup.sh`,
+per-repository and ephemeral (re-registered before every job).

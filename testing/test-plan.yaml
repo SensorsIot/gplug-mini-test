@@ -1,0 +1,264 @@
+# gPlug-mini test plan — every test, what it verifies, what it needs, what it
+# last produced. Owned by /build. Requirement ids: docs/Functionality/gPlug-mini-fsd.md
+#
+# status:  not done | successful | failed   (written by whatever ran it, with commit)
+# reason:  for not done — test not written | feature not implemented |
+#          needs <capability> | precondition unmet
+# Blocked is computed from `needs` against `capabilities`, never typed.
+
+project: gplug-mini
+fsd: docs/Functionality/gPlug-mini-fsd.md
+debugging_agenda: testing/debugging-agenda.md
+
+dut:
+  board: gPlug-mini
+  chip: esp32c3            # FSD C-HW-01
+  flash: 4MB               # FSD C-HW-02
+  console: usb-serial-jtag # FSD C-HW-05 — open with DTR and RTS low
+  slot: null               # resolved by /commission, never guessed
+
+testbench:
+  hostname: testbench-b1c2
+  url: http://192.168.0.168:8080   # discovery beacon did not answer from the container; address given by the owner
+  ap_network: 192.168.4.0/24       # bench AP; the bench itself is 192.168.4.1
+  # Bench AP credentials are test data, chosen by the test that starts the AP:
+  bench_ap_ssid: gplug-bench
+  bench_ap_password: generated per run (16 random alphanumerics), never committed
+
+capabilities:
+  # --- Testbench: taken as declared (a project never proves the bench). ---
+  # Declared by: GET /api/info (3 slots configured), /api/wifi/ap_status and
+  # /api/mqtt/status answering, and the testbench skills' documented API. 2026-10-09.
+  serial-flash:
+    what: Flash images at explicit offsets and reset a DUT through its slot (/api/flash, /api/serial/reset)
+    available: "yes"
+  serial-monitor:
+    what: Capture serial output with pattern matching (/api/serial/monitor)
+    available: "yes"
+  wifi-ap:
+    what: Bench SoftAP for the DUT, 192.168.4.1 (/api/wifi/ap_start)
+    available: "yes"
+  wifi-ap-outage:
+    what: Stop and restart the bench AP on demand (/api/wifi/ap_stop, ap_start)
+    available: "yes"
+  wifi-station-portal:
+    what: Bench joins the DUT's setup AP and drives its portal; HTTP relay (/api/enter-portal, /api/wifi/http, /api/wifi/scan)
+    available: "yes"
+    limitation: >
+      enter-portal fills only ssid/password. The gPlug portal also requires
+      mqtt_host, so provisioning posts the full form through /api/wifi/http
+      (FSD §4.1 risk).
+  mqtt-broker:
+    what: Mosquitto on the bench, reachable from the AP network; start/stop on demand (/api/mqtt/start, /api/mqtt/stop)
+    available: "yes"
+  udp-log:
+    what: UDP log listener on port 5555, buffered at /api/udplog
+    available: "yes"
+  firmware-hosting:
+    what: Files uploaded to the bench served over plain HTTP to the AP network (/api/firmware/upload)
+    available: "yes"
+  release-verification:
+    what: tag-triggered journey run against the released artifact
+    available: "yes"   # the container runs 24/7; the bench may not — an absent
+                     # bench at verify time is an unmet precondition (not done)
+  tcp-port-scan:
+    what: Scan all TCP ports of a DUT on the AP network
+    available: "no"    # no scanner declared by the bench — FR-SEC-02 stays blocked until one exists
+  https-untrusted-server:
+    what: An HTTPS server with a self-signed certificate on the AP network
+    available: "no"    # not declared by the bench — FR-SRC-03 negative case blocked
+
+  # --- Project-side: unproven until /commission observes them here. ---
+  # Each entry is an item on testing/debugging-agenda.md.
+  dut-board:
+    what: The gPlug-mini accepts a CI image at its flash_args offsets and boots it
+    available: "unproven"
+  dut-console:
+    what: The DUT's USB Serial/JTAG boot log is readable without halting or resetting it
+    available: "unproven"
+  mbus-simulator:
+    what: MBUS-Simulator (SensorsIot/mbus-simulator) mode 3 emits complete E450 CI1 telegrams every 5 s
+    available: "unproven"
+  simulator-wiring:
+    what: Simulator GPIO17 -> DUT GPIO7, common ground, non-inverted; mode 4 byte ramp arrives intact
+    available: "unproven"
+  fake-update-server:
+    what: The project's release JSON (GitHub subset) and image served by the bench, reachable from the AP network
+    available: "unproven"
+  hang-injection-build:
+    what: A test firmware variant with a hook that blocks one application task (seam for FR-WDT-01)
+    available: "no"    # seam not built yet — an obligation on development
+  # --- Field: the real peers, observe only. ---
+  real-meter:
+    what: The gPlug-mini on the real E450 with its M-Bus receiver stage
+    available: "unproven"
+  home-assistant:
+    what: The owner's Home Assistant with the MQTT integration on the owner's broker
+    available: "unproven"
+
+gates:
+  - gate: Load defined
+    verdict: null      # recorded by the fresh checker: OPEN/SHUT, date, commit
+  - gate: AI harnessed
+    verdict: null
+
+tests:
+  # --- Journey: the standard run, one test per step, in order (wave 1). ---
+  - id: JRN-01
+    title: Flash the CI image; the DUT boots it
+    verifies: [C-HW-01, C-HW-02, FR-OBS-02]
+    kind: standard
+    tier: bench
+    phase: 1
+    wave: 1
+    needs: [dut-board, serial-flash, serial-monitor, dut-console]
+    expect: 'Serial shows `Init complete` after flashing the coldflash set at its flash_args offsets'
+    must_not: Previous firmware boots (wrong offset); no output (console not proven)
+    impl: ""
+    status: not done
+    reason: test not written
+
+  - id: JRN-02
+    title: Fresh boot without configuration opens the setup AP
+    verifies: [FR-STM-01, FR-POR-01, FR-NVS-02]
+    kind: standard
+    tier: bench
+    phase: 2
+    wave: 1
+    needs: [dut-board, serial-flash, wifi-station-portal]
+    expect: 'After NVS erase and reset, `AP mode: SSID=''gPlug-<id>''` and the open SSID in a bench scan within 10 s'
+    must_not: STA attempts; MQTT traffic
+    impl: ""
+    status: not done
+    reason: test not written
+
+  - id: JRN-03
+    title: Portal accepts the bench configuration
+    verifies: [FR-POR-04, FR-POR-06, FR-STM-04]
+    kind: standard
+    tier: bench
+    phase: 2
+    wave: 1
+    needs: [dut-board, wifi-station-portal, wifi-ap, firmware-hosting]
+    expect: >
+      GET / shows the 7 fields (`Portal page requested`); POST with bench AP
+      credentials, mqtt_host 192.168.4.1, update_url = bench release JSON
+      returns 200, `Credentials saved`, restart within 5 s
+    must_not: Restart before the 200 response
+    impl: ""
+    status: not done
+    reason: test not written
+
+  - id: JRN-04
+    title: DUT joins the bench AP
+    verifies: [FR-STM-02, FR-NVS-01]
+    kind: standard
+    tier: bench
+    phase: 2
+    wave: 1
+    needs: [dut-board, wifi-ap, serial-monitor]
+    expect: '`STA mode, connecting to ''<bench ssid>''` then `STA got IP`; bench AP lists the station'
+    must_not: Setup AP reappears
+    impl: ""
+    status: not done
+    reason: test not written
+
+  - id: JRN-05
+    title: Update check finds nothing new; MQTT session comes up
+    verifies: [FR-STM-06, FR-STM-14, FR-STM-19, FR-HA-05, FR-HA-06]
+    kind: standard
+    tier: bench
+    phase: 2
+    wave: 1
+    needs: [dut-board, mqtt-broker, fake-update-server, firmware-hosting]
+    expect: 'One request to update_url (release = running version); `online` retained on gplug/<id>/status, client id gplug-<id>'
+    must_not: Download of an image; restart
+    impl: ""
+    status: not done
+    reason: test not written
+
+  - id: JRN-06
+    title: Home Assistant discovery published
+    verifies: [FR-HA-01, FR-HA-02]
+    kind: standard
+    tier: bench
+    phase: 2
+    wave: 1
+    needs: [dut-board, mqtt-broker]
+    expect: 11 retained topics homeassistant/sensor/gplug_<id>/<key>/config with the Appendix A fields
+    must_not: Missing key; not retained
+    impl: ""
+    status: not done
+    reason: test not written
+
+  - id: JRN-07
+    title: Simulator telegram arrives as a state message
+    verifies: [FR-MTR-01, FR-PUB-01, FR-HA-03, FR-STM-22]
+    kind: standard
+    tier: bench
+    phase: 2
+    wave: 1
+    needs: [dut-board, mqtt-broker, mbus-simulator, simulator-wiring]
+    expect: Two consecutive state messages on gplug/<id>/state, 11 integer keys equal to the simulator's values, each within 1 s of the telegram
+    must_not: Fewer than 11 keys; scaled values; retained flag set
+    impl: ""
+    status: not done
+    reason: test not written
+
+  # --- Host tier infrastructure (no requirement). ---
+  - id: TC-HOST-00
+    title: Host tier builds and runs without ESP-IDF
+    verifies: []
+    kind: standard
+    tier: host
+    phase: 1
+    wave: 1
+    needs: []
+    expect: ctest reports tier_runs passed
+    must_not: Built against ESP-IDF
+    impl: tests/host/test_tier.c:tier_runs
+    status: not done
+    reason: precondition unmet — CI has not run yet
+
+  # --- Later waves: declared now because they need a capability or seam. ---
+  - id: TC-WDT-01
+    title: Hung task triggers a watchdog reset within 30–35 s
+    verifies: [FR-WDT-01, FR-STM-25]
+    kind: negative
+    tier: target
+    phase: 2
+    wave: 3
+    needs: [hang-injection-build, serial-monitor]
+    expect: Reset 30–35 s after the hook fires; task-watchdog reset reason; config intact
+    must_not: No reset; reset before 30 s
+    impl: ""
+    status: not done
+    reason: needs hang-injection-build
+
+  - id: TC-SEC-02
+    title: No inbound TCP port open while OPERATIONAL
+    verifies: [FR-SEC-02]
+    kind: security
+    tier: bench
+    phase: 2
+    wave: 3
+    needs: [tcp-port-scan, wifi-ap]
+    expect: Ports 1–65535 closed or filtered
+    must_not: Any open port
+    impl: ""
+    status: not done
+    reason: needs tcp-port-scan
+
+  - id: TC-SRC-03
+    title: Update source with an untrusted certificate is refused
+    verifies: [FR-SRC-03]
+    kind: security
+    tier: bench
+    phase: 3
+    wave: 3
+    needs: [https-untrusted-server, wifi-ap, mqtt-broker]
+    expect: Check failure, MQTT_CONN reached, no download
+    must_not: Download proceeds
+    impl: ""
+    status: not done
+    reason: needs https-untrusted-server

@@ -19,7 +19,7 @@ RUN rm -rf /home/*/.oh-my-zsh /root/.oh-my-zsh \
 #
 # cmake/ninja/build-essential mirror what the `host` job of build.yml installs,
 # so
-# `cmake -S test/host -B build/host -G Ninja && ctest --test-dir build/host`
+# `cmake -S tests/host -B build/host -G Ninja && cmake --build build/host && ctest --test-dir build/host`
 # runs here exactly as it does in CI.
 #
 # jq and curl are what the operational procedures in
@@ -59,7 +59,8 @@ RUN python3 -m venv /home/dev/.venv \
         'pytest==8.*' \
         'requests==2.*' \
         'paho-mqtt==2.*' \
-        'pyserial==3.*'
+        'pyserial==3.*' \
+        'pyyaml==6.*'
 
 # UTF-8 so tmux renders block glyphs correctly (claude's splash logo)
 RUN echo 'export LANG=C.UTF-8' >> /home/dev/.bashrc

@@ -22,6 +22,8 @@
     "mounts": [
         "source=${localEnv:HOME}/actions-runner-gplug-mini-test,target=/home/dev/actions-runner,type=bind",
         "source=${localEnv:HOME}/Universal-Embedded-Workbench/.claude/skills,target=/home/dev/.harness-skills,type=bind,readonly",
+        // TestbenchDriver for the bench tier and the release-verify job.
+        "source=${localEnv:HOME}/Universal-Embedded-Workbench/pytest,target=/home/dev/testbench-pytest,type=bind,readonly",
         // One secrets file, read-only. Never mount the ~/.secrets directory:
         // it also holds the Infisical CT 120 master key.
         "source=${localEnv:HOME}/.secrets/env,target=/run/secrets/env,type=bind,readonly",

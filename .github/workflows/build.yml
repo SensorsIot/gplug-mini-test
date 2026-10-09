@@ -1,0 +1,142 @@
+name: Build Firmware
+
+# host → build on every push to main and every version tag.
+# On a tag only: verify (journey on the testbench, against this run's bytes)
+# → release. A red or unreachable journey publishes nothing.
+
+env:
+  IDF_TAG: v6.0.2          # keep in step with the container tag below (FSD C-BLD-01)
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g. 1.2.0)'
+        required: true
+
+permissions:
+  contents: write          # required to create the release
+
+jobs:
+  host:
+    name: host tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake ninja-build
+      - run: cmake -S tests/host -B build/host -G Ninja
+      - run: cmake --build build/host
+      - run: ctest --test-dir build/host --output-on-failure
+
+  build:
+    needs: host
+    runs-on: ubuntu-latest
+    container: espressif/idf:v6.0.2
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      # First, and never skipped: the container runs as root while the
+      # workspace belongs to the runner user, so git refuses every later call.
+      - name: Trust the workspace
+        run: git config --global --add safe.directory '*'
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # tags are needed for the version
+
+      - name: Show the IDF version actually used
+        run: . $IDF_PATH/export.sh >/dev/null && idf.py --version
+
+      - name: Decide the version
+        id: plan
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION="0.0.0-$(git rev-parse --short HEAD)"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building $VERSION"
+
+      # -DSDKCONFIG keeps the generated config in the build dir, so a stray
+      # root sdkconfig can never outrank sdkconfig.defaults.
+      - name: Build firmware
+        run: |
+          . $IDF_PATH/export.sh >/dev/null
+          ARGS="-B build -DSDKCONFIG=$PWD/build/sdkconfig \
+                -DPROJECT_VER=${{ steps.plan.outputs.version }}"
+          idf.py $ARGS set-target esp32c3
+          idf.py $ARGS build
+
+      - name: Collect artefacts
+        run: |
+          V="${{ steps.plan.outputs.version }}"
+          mkdir -p dist/coldflash
+          cp build/gplug-mini.bin dist/gplug-mini.bin          # OTA asset (FSD C-BLD-03)
+          cp build/gplug-mini.bin dist/firmware_v${V}.bin
+          cp build/gplug-mini.elf dist/firmware_v${V}.elf
+          # Cold-flash set taken from flash_args, never hand-written.
+          cp build/flash_args dist/coldflash/
+          awk '$1 ~ /^0x/ {print $2}' build/flash_args | while read -r f; do
+            cp "build/$f" dist/coldflash/ || { echo "FATAL: missing build/$f"; exit 1; }
+          done
+          cp build/sdkconfig dist/sdkconfig.generated
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-v${{ steps.plan.outputs.version }}
+          path: dist/
+
+  verify:
+    # The project's devcontainer runner, registered per-repo, ephemeral.
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: [self-hosted, testbench]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: firmware-v${{ needs.build.outputs.version }}
+          path: dist/
+
+      # An unreachable bench is an unmet precondition: the journey is
+      # "not done", the job fails, and nothing is released.
+      - name: Point at the testbench
+        run: |
+          ARGS="--url"; [ -n "$TESTBENCH_NAME" ] && ARGS="$ARGS --name $TESTBENCH_NAME"
+          URL=$(python3 /home/dev/.harness-skills/esp-idf-handling/discover-testbench.py $ARGS) \
+            || { echo "not done: no testbench answered discovery"; exit 1; }
+          echo "TESTBENCH_URL=$URL" >> $GITHUB_ENV
+          curl -sf "$URL/api/info" >/dev/null \
+            || { echo "not done: testbench $URL does not answer /api/info"; exit 1; }
+
+      - name: Journey on the released bytes
+        run: pytest tests/bench -m journey --firmware-dir dist/ -v
+
+  release:
+    needs: [build, verify]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: firmware-v${{ needs.build.outputs.version }}
+          path: dist/
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/gplug-mini.bin
+            dist/firmware_v*.bin
+            dist/firmware_v*.elf
+          generate_release_notes: true
