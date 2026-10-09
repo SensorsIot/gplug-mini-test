@@ -60,9 +60,11 @@ capabilities:
   tcp-port-scan:
     what: Scan all TCP ports of a DUT on the AP network
     available: "no"    # no scanner declared by the bench — FR-SEC-02 stays blocked until one exists
+    change_request: to be filed on the testbench repository (owner's decision); never worked around in this project
   https-untrusted-server:
     what: An HTTPS server with a self-signed certificate on the AP network
     available: "no"    # not declared by the bench — FR-SRC-03 negative case blocked
+    change_request: to be filed on the testbench repository (owner's decision); never worked around in this project
 
   # --- Project-side: unproven until observed working here. ---
   release-verification:
@@ -128,7 +130,7 @@ tests:
     tier: bench
     phase: 2
     wave: 1
-    needs: [dut-board, serial-flash, wifi-station-portal]
+    needs: [dut-board, dut-console, serial-flash, serial-monitor, wifi-station-portal]
     expect: 'After NVS erase and reset, `AP mode: SSID=''gPlug-<id>''` and the open SSID in a bench scan within 10 s'
     must_not: STA attempts; MQTT traffic
     impl: ""
@@ -142,7 +144,7 @@ tests:
     tier: bench
     phase: 2
     wave: 1
-    needs: [dut-board, wifi-station-portal, wifi-ap, firmware-hosting]
+    needs: [dut-board, dut-console, serial-monitor, wifi-station-portal, wifi-ap, firmware-hosting]
     expect: >
       GET / shows the 7 fields (`Portal page requested`); POST with bench AP
       credentials, mqtt_host 192.168.4.1, update_url = bench release JSON
@@ -159,7 +161,7 @@ tests:
     tier: bench
     phase: 2
     wave: 1
-    needs: [dut-board, wifi-ap, serial-monitor]
+    needs: [dut-board, dut-console, wifi-ap, serial-monitor]
     expect: '`STA mode, connecting to ''<bench ssid>''` then `STA got IP`; bench AP lists the station'
     must_not: Setup AP reappears
     impl: ""
@@ -258,7 +260,7 @@ tests:
     verifies: [FR-SRC-03]
     kind: security
     tier: bench
-    phase: 3
+    phase: 2
     wave: 3
     needs: [https-untrusted-server, wifi-ap, mqtt-broker]
     expect: Check failure, MQTT_CONN reached, no download

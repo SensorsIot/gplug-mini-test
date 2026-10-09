@@ -8,7 +8,7 @@ Read `_common.md` first.
 |---|---|---|---|
 | 1 | Every Must/Should/constraint (`FR-`, `NFR-`, `C-` ids) has a verification contract: an `id:` YAML block or a compact row whose first cell is the id | FSD | Mechanical check M1 prints no missing ids |
 | 2 | Every contract names what must NOT happen | FSD contract tables (`Must NOT happen` column) and YAML `prohibited_outcomes` | No empty cell / empty list |
-| 3 | Each requirement carries a provenance tag `[user]`, `[derived]` or `[pack:esp32]` or a `(proposed)` marker | FSD | M2 |
+| 3 | Each requirement carries a provenance tag `[user]`, `[derived]` or `[pack:esp32]` or a `(proposed)` marker | FSD | M4 |
 | 4 | Every `(proposed)` value is listed in §4.5 and in `open_decisions` (Appendix C) | FSD §4.5, Appendix C | Each proposed value appears in both |
 | 5 | State model §5 has a transition table and a completeness table covering all 7 states | FSD §5.4, §5.5 | Quote both tables' state columns |
 | 6 | Security profile §21.1 precedes the security requirements §21.3 | FSD §21 | Heading order |
@@ -28,6 +28,13 @@ print(len(ids),'requirements; missing:',sorted(ids-c))
 PY
 # M2 — weasel words in the FSD (expect: no output)
 grep -n -iE '\b(appropriate|graceful|user-friendly|as needed|if possible|reasonable|sufficient|robust|properly|seamless|optimal|minimal|acceptable|normal operation|best effort)\b' docs/Functionality/gPlug-mini-fsd.md
+# M4 — requirements without a provenance tag (expect: empty list)
+python3 - <<'PY'
+import re
+s=open('docs/Functionality/gPlug-mini-fsd.md').read()
+lines=[l for l in s.split('\n') if re.match(r'^(- \*\*|\| )(?:FR|NFR|C)-[A-Z]+-\d+\**( \[|\*\* \[)',l)]
+print(len(lines),'requirement lines; untagged:',[l[:40] for l in lines if not re.search(r'\[(user|derived|pack:esp32)\]|\(proposed\)',l)])
+PY
 # M3 — planes committed (expect: all four listed, none untracked)
 git ls-files docs/00-Overview.md docs/Method docs/UserDocumentation docs/Functionality
 ```

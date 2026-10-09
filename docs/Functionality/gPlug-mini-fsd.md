@@ -141,9 +141,16 @@ Source-layout rules that make the code mirror these layers are HOW and live in
 Requirements each phase must pass (every FSD id appears once; a requirement
 split across phases names the cases):
 
-- **Phase 1:** C-HW-01, C-HW-02, C-HW-03, C-HW-05, C-HW-06 · C-BLD-01, C-BLD-02 · FR-MTR-01..08 · FR-OBS-01 · FR-OBS-02 for `Init complete` and `alive`.
-- **Phase 2:** C-HW-04 · FR-STM-01, 02, 04..12, 14, 15, 19..25 · NFR-STM-01..03 · FR-PUB-01..07, NFR-PUB-01 · FR-UPD-01, FR-UPD-03, FR-UPD-07 · FR-SRC-01..06 · FR-HA-01..08 · FR-POR-01..07 · FR-LOG-01, 02 · FR-NVS-01 (power-cycle cases), FR-NVS-02 · FR-WDT-01, FR-WDT-02 (outage cases) · FR-ID-01 (without OTA) · FR-CFG-01 · FR-SEC-01, 02 · FR-OBS-02 for the WiFi, portal and UDP markers.
-- **Phase 3:** FR-STM-13, 16, 17, 18 · FR-UPD-02, 04, 05, 06, 08 · C-BLD-03, C-BLD-04 · FR-NVS-01 (after OTA) · FR-WDT-02 (during download) · FR-ID-01 (after OTA) · FR-OBS-02 for `OTA succeeded` and `OTA failed`.
+- **Phase 1:** C-HW-01, C-HW-02, C-HW-03, C-HW-05, C-HW-06 · C-BLD-01, C-BLD-02 (boot log) · FR-MTR-01..08 · FR-OBS-01 (power-on case) · FR-OBS-02 for `Init complete` and `alive`.
+- **Phase 2:** C-HW-04 · FR-STM-01, 02, 04..12, 14, 15, 19..25 · NFR-STM-01..03 · FR-PUB-01..07, NFR-PUB-01 · FR-UPD-01, FR-UPD-03, FR-UPD-07 · FR-SRC-01, 02, FR-SRC-03 (bench case), FR-SRC-04..06 · FR-HA-01..08 · FR-POR-01..07 · FR-LOG-01, 02 · FR-NVS-01 (power-cycle cases), FR-NVS-02 · FR-WDT-01, FR-WDT-02 (outage cases) · FR-ID-01 (without OTA) · FR-CFG-01 · FR-SEC-01, 02 · C-BLD-02 (discovery `sw_version`) · FR-OBS-01 (software-restart and watchdog cases) · FR-OBS-02 for the WiFi, portal and UDP markers.
+- **Phase 3:** FR-STM-13, 16, 17, 18 · FR-UPD-02, 04, 05, 06, 08 · C-BLD-03, C-BLD-04 · FR-SRC-03 (field case, needs a published release) · FR-NVS-01 (after OTA) · FR-WDT-02 (during download) · FR-ID-01 (after OTA) · FR-OBS-02 for `OTA succeeded` and `OTA failed`.
+
+A phase exits when every listed requirement passes. A test blocked on a
+capability the testbench does not declare (`tcp-port-scan` for FR-SEC-02,
+`https-untrusted-server` for the FR-SRC-03 bench case) is reported as
+*not done — needs capability* with a change request to the testbench
+repository; the requirement stays unmet, and *Ready for shipment* stays shut,
+until that capability exists.
 
 Each phase is enterable from the previous one. Phase 2 rests on the Phase 1
 image; its update check (UPD_CHECK → MQTT_CONN via FR-STM-14) needs no
@@ -617,7 +624,7 @@ is also verified on the target tier with the simulator.
 | FR-MTR-01 | Each valid recording; simulator mode 3 on target | 11 values equal the reference values | Any value differs; values in wrong slots | host, target |
 | FR-MTR-02 | Valid recording with one byte flagged parity error | Rejected, reason `parity` | Values output | host |
 | FR-MTR-03 | Valid recording with one FCS byte flipped; one HCS byte flipped | Rejected, reason `fcs` / `hcs` | Values output | host |
-| FR-MTR-04 | Recording with frame 2 removed; GBT block numbers swapped; last 10 bytes cut | Rejected, reason `truncated` / `sequence` | Partial values output | host |
+| FR-MTR-04 | Recording with frame 2 removed; GBT block numbers swapped; last 10 bytes cut | Rejected with reason `truncated`, `sequence`, `truncated` respectively | Partial values output | host |
 | FR-MTR-05 | Recording with object list altered (one OBIS changed; order swapped) | Rejected, reason `object-list` | Values mapped by position | host |
 | FR-MTR-06 | Recording with one value re-encoded as `long-unsigned` | Rejected, reason `type` | Value output | host |
 | FR-MTR-07 | Each corrupted recording | Exactly one log line with the expected reason | No line; wrong reason | host |
@@ -819,7 +826,7 @@ verification:
 
 | ID | Precondition · stimulus | Expected observation | Must NOT happen | Tier |
 |---|---|---|---|---|
-| FR-WDT-02 | OPERATIONAL · AP off 10 min; broker off 10 min; FR-UPD-02 download | No reset in any case | Task-watchdog reset reason | bench |
+| FR-WDT-02 | OPERATIONAL · AP off 10 min; broker off 10 min; FR-UPD-02 download | No task-watchdog reset in any case (the restart FR-STM-16 performs after a download is expected) | Task-watchdog reset reason | bench |
 
 # Part D — Cross-cutting Concerns
 
@@ -1021,7 +1028,7 @@ Measured values are A-XDR `double-long-unsigned` (uint32). Example state message
 
 ```yaml
 document_status: draft
-fsd_version: 0.3.1
+fsd_version: 0.3.2
 repository: https://github.com/SensorsIot/gplug-mini-test
 baseline_commit: a6e039c
 applicable_firmware_version: none yet
@@ -1035,6 +1042,7 @@ change_history:
   - 0.2.0 2026-10-08 owner accepted all §4.5 skill-filled values; repository made public
   - 0.3.0 2026-10-09 FR-OBS-02 testbench log markers (from /harness testbench integration)
   - 0.3.1 2026-10-09 §3: update check moved to Phase 2, every id assigned to a phase; FR-STM-25 contract row filled
+  - 0.3.2 2026-10-09 §3: C-BLD-02, FR-OBS-01, FR-SRC-03 split by case; blocked-capability exit rule; FR-MTR-04, FR-WDT-02 rows clarified
 superseded_requirements: []
 open_decisions:
   - Heartbeat interval 10 s (gates FR-OBS-02)
